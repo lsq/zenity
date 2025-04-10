@@ -35,7 +35,7 @@ jobs:
         # env:
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check vim-mingw64 build version
+      - name: Check zenity build version
         uses: oprypin/find-latest-tag@v1
         with:
           repository: lsq/zenity
