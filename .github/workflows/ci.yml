@@ -17,7 +17,7 @@ jobs:
         include: [
             {msystem: ucrt64, toolchain: ucrt-x86_64}
         ]
-      fail-false: false
+      fail-fast: false
 
     steps:
       - run: git config --global core.autocrlf false
@@ -35,6 +35,7 @@ jobs:
         with:
           repository: lsq/zenity
         id: build_version
+           
       - run: |
           echo "Latest vim-mingw64 build version is ${{ steps.build_version.outputs.tag }}"
           echo "tagName=${{ steps.build_version.outputs.tag }}" >> $env:GITHUB_ENV 
@@ -50,8 +51,9 @@ jobs:
           #location: C:\
           release: false
 
-      - name: build
-      - run: |
+      - name: Build
+        shell: msys2 {0}
+        run: |
           meson setup --prefix `cygpath -am ./dest` "${MESON_BUILD_DIR}"
           meson test -C "${MESON_BUILD_DIR}"
           ninja -C "${MESON_BUILD_DIR}" install
@@ -72,4 +74,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARBALL_ARTIFACT_PATH: "${MESON_BUILD_DIR}/meson-dist/zenity-${{env.tagName}}.tar.xz"
-      artifacts:
