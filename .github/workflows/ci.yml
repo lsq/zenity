@@ -42,7 +42,7 @@ jobs:
         id: build_version
            
       - run: |
-          echo "Latest vim-mingw64 build version is ${{ steps.build_version.outputs.tag }}"
+          echo "Latest zenity build version is ${{ steps.build_version.outputs.tag }}"
           echo "tagName=${{ steps.build_version.outputs.tag }}" >> $env:GITHUB_ENV 
 
       - uses: msys2/setup-msys2@v2
@@ -73,7 +73,7 @@ jobs:
       #    name: TWRP_Device_Tree-${{ github.run_id }}
           name: ${{env.tagName}}
       #    tag_name: ${{ github.run_id }}
-          tag_name: ${{env.tagName}}
+          # tag_name: ${{env.tagName}}
       #    body: DeviceTree for twrp
           # body_path: gitlog.txt
         env:
