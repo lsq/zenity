@@ -22,18 +22,18 @@ jobs:
     steps:
       # - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
-      - run: |
-          git branch
-          git remote add upstream https://github.com/GNOME/zenity.git
-          git fetch upstream
-          git checkout master
-          git pull --rebase upstream master
+      # - run: |
+          # git branch
+          # git remote add upstream https://github.com/GNOME/zenity.git
+          # git fetch upstream
+          # git checkout master
+          # git pull --rebase upstream master
           # git push origin master
-          git merge windows
-          git add .
-          git commit -m "add support windows"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # git merge windows
+          # git add .
+          # git commit -m "add support windows"
+        # env:
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check vim-mingw64 build version
         uses: oprypin/find-latest-tag@v1
