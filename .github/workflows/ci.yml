@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
 
     steps:
-      - run: git config --global core.autocrlf false
+      # - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - run: |
           git branch
@@ -28,7 +28,7 @@ jobs:
           git fetch upstream
           git checkout master
           git pull --rebase upstream master
-          git push origin master
+          # git push origin master
           git merge windows
           git add .
           git commit -m "add support windows"
