@@ -1,0 +1,75 @@
+name: GNOME Zenity Build For Windows
+on:
+  # schedule:
+    # - cron: "30 0/8 * * 0/2"
+  workflow_dispatch:
+#
+env:
+  MESON_BUILD_DIR: _build
+  # TARBALL_ARTIFACT_PATH: "${MESON_BUILD_DIR}/meson-dist/${zenity}-${TAGNAME}.tar.xz"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        include: [
+            {msystem: ucrt64, toolchain: ucrt-x86_64}
+        ]
+      fail-false: false
+
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - run: |
+          git checkout master
+          git pull --rebase upstream master
+          git push origin master
+          git merge windows
+          git add .
+          git commit -m "add support windows"
+
+      - name: Check vim-mingw64 build version
+        uses: oprypin/find-latest-tag@v1
+        with:
+          repository: lsq/zenity
+        id: build_version
+      - run: |
+          echo "Latest vim-mingw64 build version is ${{ steps.build_version.outputs.tag }}"
+          echo "tagName=${{ steps.build_version.outputs.tag }}" >> $env:GITHUB_ENV 
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          install: mingw-w64-${{ matrix.toolchain }}-toolchain base-devel binutils git help2man perl
+          pacboy: >-
+            gettext-tools gettext-runtime gcc libadwaita meson gtk4
+          update: true
+          path-type: inherit
+          #location: C:\
+          release: false
+
+      - name: build
+      - run: |
+          meson setup --prefix `cygpath -am ./dest` "${MESON_BUILD_DIR}"
+          meson test -C "${MESON_BUILD_DIR}"
+          ninja -C "${MESON_BUILD_DIR}" install
+          meson dist -C "${MESON_BUILD_DIR}"
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            "${TARBALL_ARTIFACT_PATH}"
+      #      ./DeviceTree.zip
+      #    name: TWRP_Device_Tree-${{ github.run_id }}
+          name: ${{env.tagName}}
+      #    tag_name: ${{ github.run_id }}
+          tag_name: ${{env.tagName}}
+      #    body: DeviceTree for twrp
+          # body_path: gitlog.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARBALL_ARTIFACT_PATH: "${MESON_BUILD_DIR}/meson-dist/zenity-${{env.tagName}}.tar.xz"
+      artifacts:
