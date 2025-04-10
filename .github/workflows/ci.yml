@@ -23,6 +23,7 @@ jobs:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - run: |
+          git branch
           git checkout master
           git pull --rebase upstream master
           git push origin master
