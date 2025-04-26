@@ -17,6 +17,9 @@ zenity_sources = [
   'tree.c',
   'util.c',
   'zenity-tree-column-view.c',
+  'nl_langinfo.c',
+  'setlocale_null.c',
+  'setlocale-lock.c'
 ]
 
 zenity_cv_enums = gnome.mkenums_simple('zenity-tree-column-view-enums',
