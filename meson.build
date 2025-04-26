@@ -57,7 +57,6 @@ zenity_conf.set('DEBUG', get_option('debug'))
 check_headers = [
   'sys/types.h',
   'unistd.h',
-  'langinfo.h',
   'locale.h'
 ]
 
