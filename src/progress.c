@@ -48,6 +48,58 @@ static gboolean autokill;
 static gboolean no_cancel;
 static gboolean auto_close;
 
+#if defined _WIN32 && ! defined __CYGWIN__
+# define WIN32_LEAN_AND_MEAN  /* avoid including junk */
+# include <windows.h>
+#include <tlhelp32.h>
+
+typedef __int64 pid_t;
+int kill(pid_t pid, int sig)
+{
+int ret;
+HANDLE h;
+
+h = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+if (h == NULL) return -1;
+
+ret = TerminateProcess(h, 0) ? 0 : -1;
+CloseHandle(h);
+return ret;
+}
+
+DWORD getppid() {
+  HANDLE hSnapshot = INVALID_HANDLE_VALUE;
+  PROCESSENTRY32 pe32;
+  DWORD ppid = 0, pid = GetCurrentProcessId();
+
+  hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  //__try{
+  // try{
+  if (hSnapshot == INVALID_HANDLE_VALUE) //__leave;
+    return -1;
+
+  ZeroMemory(&pe32, sizeof(pe32));
+  pe32.dwSize = sizeof(pe32);
+  if (!Process32First(hSnapshot, &pe32)) //__leave;
+    return -1;
+
+  do {
+    if (pe32.th32ProcessID == pid) {
+      ppid = pe32.th32ParentProcessID;
+      break;
+    }
+  } while (Process32Next(hSnapshot, &pe32));
+
+  //}
+  //__finally{
+  // catch{
+  if (hSnapshot != INVALID_HANDLE_VALUE)
+    CloseHandle(hSnapshot);
+  //}
+  return ppid;
+}
+#endif
+
 static void zenity_progress_dialog_response (GtkWidget *widget, char *rstr, gpointer data);
 
 static gboolean
