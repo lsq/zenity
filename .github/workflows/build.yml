@@ -1,0 +1,138 @@
+name: Windows build
+on:
+  schedule:
+    - cron: "30 0/8 * * 0/2"
+  workflow_dispatch:
+  push:
+    path:
+      .github/workflows/build.yml
+#
+env:
+  MESON_BUILD_DIR: _build
+  # TARBALL_ARTIFACT_PATH: "${MESON_BUILD_DIR}/meson-dist/${zenity}-${TAGNAME}.tar.xz"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        include: [
+            {msystem: ucrt64, toolchain: ucrt-x86_64}
+        ]
+      fail-fast: false
+
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - name: update from upstream
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git log -10 --oneline
+          echo "pull windows branch`n----------------------`n"
+          git pull origin
+          echo "branchs:`n----------------------`n"
+          git branch
+          echo "add upstream:`n----------------------`n"
+          git remote add upstream https://github.com/GNOME/zenity.git
+          git fetch upstream --no-tag
+          git config merge.keepLocal.name "Keep local version"
+          git config merge.keepLocal.driver "cp %A %O"
+          git status
+          git checkout master
+          git rebase upstream master
+          git check-attr merge -- .github/workflows/build.yml
+          git rebase upstream/main -X theirs
+          git status
+          #git merge upstream/master
+          #git log master --not --remotes
+          #git diff origin/master..HEAD
+          #git cherry -v
+          if ($(git cherry -v) -eq "") {
+            echo "no needed update"
+            echo "pushflag=0" >> $env:GITHUB_ENV
+          } else {
+            echo "need to update ..."
+            echo "pushflag=1" >> $env:GITHUB_ENV
+          }
+          #
+          # git push origin master
+          #git checkout --theirs *
+          #git status
+          #git add .
+          #git commit -m "add support windows"
+          #pwd
+          #tar -cf conflict.tar src/meson.build src/option.c src/progress.c
+        # env:
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push changes
+        if: ${{ env.pushflag == 1 }}
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
+          # force_with_lease: true
+
+      - name: Check zenity build version
+        uses: oprypin/find-latest-tag@v1
+        with:
+          repository: lsq/zenity
+        id: build_version
+           
+      - run: |
+          echo "Latest zenity build version is ${{ steps.build_version.outputs.tag }}"
+          echo "tagName=${{ steps.build_version.outputs.tag }}" >> $env:GITHUB_ENV 
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          install: mingw-w64-${{ matrix.toolchain }}-toolchain base-devel binutils git help2man perl
+          pacboy: >-
+            gcc libadwaita  gtk4 itstool
+          update: true
+          path-type: inherit
+          #location: C:\
+          release: false
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          git checkout windows
+          git rebase master windows
+          pwd && ls
+          sed -i 's|\(# SigLevel = Never\)|\1\n[mlsq]\nSigLevel = Optional\nServer = https://github.com/lsq/msys2-packages/releases/latest/download\n|' /etc/pacman.conf
+          pacman -Syuu --noconfirm --overwrite '*'
+          pacman -Syuu --noconfirm --overwrite '*'
+          pacboy sync --needed --noconfirm mlsq::perl-Locale-Gettext:p mlsq::gettext-runtime:p mlsq::meson
+          meson setup --prefix `cygpath -am ./dest` "${MESON_BUILD_DIR}"
+          meson test -C "${MESON_BUILD_DIR}"
+          ninja -C "${MESON_BUILD_DIR}" install
+          meson dist -C "${MESON_BUILD_DIR}"
+          7z a zenity-windows.7z dest
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conflict
+          path: |
+            src/meson.build 
+            src/option.c 
+            src/progress.c
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.TARBALL_ARTIFACT_PATH }}
+            zenity-windows.7z
+      #      ./DeviceTree.zip
+      #    name: TWRP_Device_Tree-${{ github.run_id }}
+          name: ${{env.tagName}}
+      #    tag_name: ${{ github.run_id }}
+          tag_name: ${{env.tagName}}
+      #    body: DeviceTree for twrp
+          # body_path: gitlog.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARBALL_ARTIFACT_PATH: ${{env.MESON_BUILD_DIR}}/meson-dist/zenity-${{env.tagName}}.tar.xz
